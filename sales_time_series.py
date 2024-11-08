@@ -18,22 +18,22 @@ def load_and_prepare_data(input_file):
 
     return data
 
-def create_daily_time_series(data):
-    # Agrupar por artículo y fecha, sumando la demanda medida
-    data_daily = data.groupby(['article', 'date'])['MeasuredDemand'].sum().reset_index()
+def create_time_series(data, freq='D'):
+    # Agrupar por artículo y frecuencia, sumando la demanda medida
+    data_grouped = data.groupby(['article', pd.Grouper(key='date', freq=freq)])['MeasuredDemand'].sum().reset_index()
 
     # Crear el rango de fechas completo
-    min_date = data_daily['date'].min()
-    max_date = data_daily['date'].max()
-    all_days = pd.date_range(min_date, max_date, freq='D')
+    min_date = data_grouped['date'].min()
+    max_date = data_grouped['date'].max()
+    all_days = pd.date_range(min_date, max_date, freq=freq)
 
-    # Crear series de tiempo para cada artículo, asegurándose de que cada día esté representado
+    # Crear series de tiempo para cada artículo, asegurándose de que cada período esté representado
     time_series = {}
-    for producto in data_daily['article'].unique():
+    for producto in data_grouped['article'].unique():
         # Filtrar datos para el producto actual
-        producto_data = data_daily[data_daily['article'] == producto]
+        producto_data = data_grouped[data_grouped['article'] == producto]
 
-        # Reindexar para incluir todos los días, incluso los días sin ventas (se llena con 0)
+        # Reindexar para incluir todos los períodos, incluso los sin ventas (se llena con 0)
         producto_data = producto_data.set_index('date').reindex(all_days, fill_value=0).reset_index()
         producto_data.rename(columns={'index': 'date'}, inplace=True)
 
