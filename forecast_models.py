@@ -88,4 +88,3 @@ for filepath in filepaths:
         
         # Guardar el gráfico de pronóstico
         save_forecast_plots(data[column], forecast, column)
-
