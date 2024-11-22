@@ -1,21 +1,11 @@
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
-import re
+from utils import load_and_clean_data
 
 def load_and_prepare_data(input_file):
-    # Cargar datos
-    data = pd.read_csv(input_file, encoding='ISO-8859-1')
-
-    # Procesar columnas necesarias
-    data['unit_price'] = data['unit_price'].apply(lambda x: re.sub(r'[^\d,.-]', '', x)) # limpiar caracteres no numéricos
-    data['unit_price'] = data['unit_price'].str.replace(',', '.').astype(float) # formato numérico
-    data['Quantity'] = pd.to_numeric(data['Quantity'], errors='coerce') # asegurar que 'Quantity' es numérico
-    data['date'] = pd.to_datetime(data['date'], format='%Y-%m-%d') # convertir fecha
-
-    # Crear la columna 'MeasuredDemand'
+    data = load_and_clean_data(input_file)
     data['MeasuredDemand'] = data['Quantity'] * data['unit_price']
-
     return data
 
 def create_time_series(data, freq='D'):
@@ -92,7 +82,7 @@ def load_class_a_products(output_file):
 # Rutas de archivos
 input_file = 'Bakery sales.csv'
 class_a_file = 'class_a_products.txt'
-output_dir_base = 'time_series_plots'  # Carpeta base para guardar los gráficos
+output_dir_base = 'products_time_series'  # Carpeta base para guardar los gráficos
 
 # Elegir la frecuencia (puede ser 'D', 'W', o 'M')
 freq = 'W'  # 'D' para diario, 'W' para semanal, 'M' para mensual
