@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore")
 
 def load_data(filepath):
     # Cargar los datos de la serie de tiempo
-    data = pd.read_csv(filepath, index_col=0, parse_dates=True)
+    data = pd.read_csv(filepath, index_col=0, parse_dates=True, encoding='utf-8-sig')
     return data
 
 def check_stationarity(series):

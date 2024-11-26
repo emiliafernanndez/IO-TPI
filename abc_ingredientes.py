@@ -1,6 +1,9 @@
 import pandas as pd
 import os
 
+import pandas as pd
+import os
+
 def clean_ingredient_data(input_file, output_file='cleaned_ingredient_data.csv'):
     """
     Limpia los datos de ingredientes cargados desde un archivo CSV y guarda el resultado en otro archivo.
@@ -10,8 +13,8 @@ def clean_ingredient_data(input_file, output_file='cleaned_ingredient_data.csv')
     output_file (str): Ruta del archivo CSV de salida con los datos limpios.
     """
 
-    # Cargar el archivo
-    data = pd.read_csv(input_file, encoding='ISO-8859-1')
+    # Cargar el archivo con codificación UTF-8
+    data = pd.read_csv(input_file, encoding='utf-8-sig')  # Usar utf-8-sig para manejar BOM
 
     # Eliminar las columnas vacías
     data.dropna(axis=1, how='all', inplace=True)
@@ -47,6 +50,7 @@ def clean_ingredient_data(input_file, output_file='cleaned_ingredient_data.csv')
     data.to_csv(output_file)
 
     print(f'Datos limpiados guardados en {output_file}')
+
 
 
 def abc_analysis_ingredients(file_path, output_path):
