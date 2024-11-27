@@ -45,18 +45,17 @@ def intercalated_validation(data, model_order=(1, 1, 1), seasonal_order=(1, 1, 1
             result = model.fit(disp=False)
             forecast = result.forecast(steps=test_weeks)
             
-            # Calcular promedio de predicciones y valores reales
-            avg_actual_value = test_data.mean()
-            avg_predicted_value = forecast.mean()
-            error = abs(avg_actual_value - avg_predicted_value)  # Error absoluto
+            # Calcular RMSE (Root Mean Squared Error)
+            squared_errors = (test_data - forecast) ** 2
+            rmse = np.sqrt(np.mean(squared_errors))
             
             # Guardar resultados
             results.append({
                 'Train Weeks': train_interval,
                 'Test Weeks': test_interval,
-                'Avg Actual Value': avg_actual_value,
-                'Avg Predicted Value': avg_predicted_value,
-                'Error': error
+                'Avg Actual Value': test_data.mean(),
+                'Avg Predicted Value': forecast.mean(),
+                'Error (RMSE)': rmse
             })
             
             # Desplazar la ventana completamente (entrenamiento + prueba)
@@ -69,7 +68,7 @@ def intercalated_validation(data, model_order=(1, 1, 1), seasonal_order=(1, 1, 1
         print(f"Archivo generado para {column}: {output_path}")
 
 # Cargar los datos
-filepath = 'weekly_ingredients.csv' 
+filepath = 'weekly_ingredients.csv'  # Cambia el nombre del archivo según corresponda
 data = load_data(filepath)
 
 # Ejecutar validación intercalada con ventanas de 4 semanas de entrenamiento y 2 de prueba
