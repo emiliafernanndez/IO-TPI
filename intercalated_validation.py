@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 
 def load_data(filepath):
     """Carga los datos desde un archivo CSV."""
-    data = pd.read_csv(filepath, index_col=0, parse_dates=True)
+    data = pd.read_csv(filepath, index_col=0, parse_dates=True, encoding='utf-8-sig')
     return data
 
 def format_week_interval(weeks):
