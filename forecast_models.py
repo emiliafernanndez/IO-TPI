@@ -65,44 +65,6 @@ def save_forecast_plots(series, forecast, ingredient_name, output_folder='ingred
     plt.close()
     print(f'Gráfico de pronóstico guardado en: {file_path}')
 
-def intercalated_validation(data, model_order=(1,1,1), seasonal_order=(1,1,1,52), test_interval=4):
-    """
-    Realiza validación intercalada para calcular la precisión del modelo.
-    """
-    results = {}
-    for column in data.columns:
-        series = data[column].dropna()
-        test_indices = list(range(0, len(series), test_interval))  # Índices para prueba
-        predictions = []
-        actuals = []
-
-        for i in test_indices:
-            # Datos de entrenamiento
-            train_data = series.drop(series.index[i:i+1])  # Excluir la semana de prueba
-            
-            # Ajustar el modelo
-            model = SARIMAX(
-                train_data, 
-                order=model_order, 
-                seasonal_order=seasonal_order, 
-                enforce_stationarity=False, 
-                enforce_invertibility=False
-            )
-            result = model.fit(disp=False)
-            
-            # Realizar pronóstico para la semana de prueba
-            forecast = result.forecast(steps=1)
-            predictions.append(forecast.iloc[0])
-            actuals.append(series.iloc[i])
-        
-        # Cálculo de métricas
-        mae = mean_absolute_error(actuals, predictions)
-        rmse = np.sqrt(mean_squared_error(actuals, predictions))
-        results[column] = {'MAE': mae, 'RMSE': rmse}
-        print(f"Resultados para {column}: MAE={mae:.2f}, RMSE={rmse:.2f}")
-    
-    return results
-
 # Cargar el archivo de datos de ejemplo
 filepaths = ['weekly_ingredients.csv']  # Ajusta el nombre del archivo según corresponda
 
@@ -127,11 +89,3 @@ for filepath in filepaths:
         
         # Guardar el gráfico de pronóstico
         save_forecast_plots(data[column], forecast, column)
-
-
-# Cargar los datos
-filepath = 'weekly_ingredients.csv'
-data = load_data(filepath)
-
-# Ejecutar validación intercalada
-metrics = intercalated_validation(data)
