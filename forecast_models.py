@@ -45,14 +45,25 @@ def generate_forecasts(result, steps=48, repetitions=100):
     return forecast_series, forecasts_df
 
 def save_forecast_plots(series, forecast, ingredient_name, output_folder='ingredients_forecast'):
+    """
+    Guarda gráficos de pronóstico para un insumo específico.
+
+    Parámetros:
+    - series: serie de datos históricos.
+    - forecast: serie de pronóstico.
+    - ingredient_name: nombre del insumo.
+    - output_folder: carpeta donde van los gráficos.
+    """
     # Crear la carpeta de salida si no existe
     os.makedirs(output_folder, exist_ok=True)
     
-    # Graficar la serie original, el pronóstico y las simulaciones
+    # Graficar la serie original y el pronóstico
     plt.figure(figsize=(10, 6))
     plt.plot(series, label='Datos Históricos', color='black', marker='o')
     plt.plot(forecast, label='Pronóstico', color='green', linestyle='--', marker='o')
 
+    # Agregar títulos y etiquetas
+    plt.title(f'Pronóstico Semanal para {ingredient_name}', fontsize=14, fontweight='normal', loc='center')
     plt.xlabel('Fecha')
     plt.ylabel('Cantidad Usada')
     plt.legend()
