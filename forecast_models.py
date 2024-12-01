@@ -76,8 +76,25 @@ def save_forecast_plots(series, forecast, ingredient_name, output_folder='ingred
     plt.close()
     print(f'Gráfico de pronóstico guardado en: {file_path}')
 
+def save_forecasts_to_csv(forecasts, output_path='ingredient_forecasts.csv'):
+    """
+    Guarda los pronósticos en un único archivo CSV.
+    
+    Parámetros:
+    - forecasts: diccionario donde las claves son nombres de insumos y los valores son series de pronósticos.
+    - output_path: ruta del archivo CSV de salida.
+    """
+    # Combinar los pronósticos en un DataFrame
+    forecast_df = pd.concat(forecasts, axis=1)
+    forecast_df.columns = forecasts.keys()
+    
+    # Guardar en CSV
+    forecast_df.to_csv(output_path, encoding='utf-8-sig')
+    print(f'Pronósticos guardados en: {output_path}')
+
 # Cargar el archivo de datos de ejemplo
 filepaths = ['weekly_ingredients.csv']  # Ajusta el nombre del archivo según corresponda
+forecast_results = {}  # Diccionario para almacenar los pronósticos de cada insumo
 
 for filepath in filepaths:
     data = load_data(filepath)
@@ -100,3 +117,9 @@ for filepath in filepaths:
         
         # Guardar el gráfico de pronóstico
         save_forecast_plots(data[column], forecast, column)
+        
+        # Guardar el pronóstico en el diccionario
+        forecast_results[column] = forecast
+
+# Guardar todos los pronósticos en un único archivo CSV
+save_forecasts_to_csv(forecast_results)
