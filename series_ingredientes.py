@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from utils import crear_carpeta
 import os
 
 def plot_weekly_ingredient_series(ingredient_series_data, output_folder):
@@ -14,7 +15,7 @@ def plot_weekly_ingredient_series(ingredient_series_data, output_folder):
     weekly_ingredients = pd.read_csv(ingredient_series_data, index_col=0, parse_dates=True, encoding='utf-8-sig')
     
     # Crear la carpeta de salida si no existe
-    os.makedirs(output_folder, exist_ok=True)
+    crear_carpeta(output_folder)
 
     # Generar gráficos para cada columna (insumo) en el archivo
     for ingredient in weekly_ingredients.columns:

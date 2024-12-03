@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 import warnings
+from utils import crear_carpeta
 
 warnings.filterwarnings("ignore")
 
@@ -18,7 +19,9 @@ def format_week_interval(weeks):
 def intercalated_validation(data, model_order=(1, 1, 1), seasonal_order=(1, 1, 1, 52), 
                             train_weeks=4, test_weeks=2, output_folder='error_prediction'):
     """Realiza validación intercalada con ventanas consecutivas de entrenamiento y prueba."""
-    os.makedirs(output_folder, exist_ok=True)
+    
+    # Crear carpeta de salida si no existe
+    crear_carpeta(output_folder)
     
     for column in data.columns:
         series = data[column].dropna()
