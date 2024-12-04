@@ -33,7 +33,7 @@ def calcular_tamano_lote(d, k, c1, Sp, volumen_unitario, volumen_maximo, b, mont
             q = (monto_maximo / b) - Sp
     return q
 
-def calcular_variables(q, d, k, c1, Sp, duracion_temporada):
+def calcular_variables(q, d, k, c1, b, Sp, duracion_temporada):
     """
     Calcula las variables del inventario (excepto q).
 
@@ -42,6 +42,7 @@ def calcular_variables(q, d, k, c1, Sp, duracion_temporada):
         d: Demanda del insumo (kg).
         k: Costo por orden ($).
         c1: Costo de mantenimiento ($).
+        b: Costo de adquisición ($).
         Sp: Stock de protección (kg).
         duracion_temporada: Duración de la temporada (semanas).
 
@@ -52,7 +53,7 @@ def calcular_variables(q, d, k, c1, Sp, duracion_temporada):
     n_pedidos = math.ceil(duracion_temporada / t)
     D = d * duracion_temporada
     S = q + Sp
-    CTE = (D * k / q) + (q * c1 / 2) + (D * c1) + (Sp * c1)
+    CTE = (D * k / q) + (q * c1 / 2) + (D * b) + (Sp * c1)
     return t, n_pedidos, D, S, CTE
 
 def modelo_insumo(insumo, parametros, demanda, duracion_temporada, k):
@@ -79,7 +80,7 @@ def modelo_insumo(insumo, parametros, demanda, duracion_temporada, k):
     
     # Calcular variables
     q = calcular_tamano_lote(demanda, k, c1, Sp, volumen_unitario, volumen_maximo, b, monto_maximo)
-    t, n_pedidos, D, S, CTE = calcular_variables(q, demanda, k, c1, Sp, duracion_temporada)
+    t, n_pedidos, D, S, CTE = calcular_variables(q, demanda, k, c1, b, Sp, duracion_temporada)
     volumen_total = S * volumen_unitario
     monto_total = S * b
     return [insumo, round(q, 2), round(t, 2), n_pedidos, round(D, 2), round(S, 2), round(CTE, 2), round(volumen_total, 2), round(monto_total, 2)]
