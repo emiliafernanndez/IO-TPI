@@ -3,58 +3,28 @@ import csv
 import os
 from utils import crear_carpeta
 
-def calcular_tamano_lote(d, k, c1, Sp, volumen_unitario, volumen_maximo, b, monto_maximo):
+def calcular_variables(d, k, c1, b, Sp, duracion_temporada):
     """
-    Calcula el tamaño del lote, verificando el cumplimiento de las restricciones.
+    Calcula las variables del modelo de stock de protección.
 
-    Args (todos son float):
-        d: Demanda del insumo (kg).
-        k: Costo por orden ($).
-        c1: Costo de mantenimiento ($).
-        Sp: Stock de protección (kg).
-        volumen_unitario: volumen que ocupa una unidad del insumo (m3).
-        volumen_maximo: volumen máximo disponible para almacenar el insumo (m3).
-        b: Costo unitario del insumo ($).
-        monto_maximo: Monto máximo a inmovilizar permitido ($).
-
+    Args:
+        nombre_temporada (str): Nombre de la temporada.
+        datos_insumos (list): Lista de diccionarios con los datos de cada insumo necesarios para el cálculo.
+        max_monto (float): Monto máximo permitido.
+        max_volumen_sin (float): Volumen máximo sin refrigerar permitido.
+        max_volumen_ref (float): Volumen máximo refrigerado permitido.
+        carpeta (str): Carpeta donde guardar el archivo de texto.
+        
     Returns:
-        float: Tamaño del lote ajustado.
+        tupla: Variables calculadas (q, t, n_pedidos, D, S, CTE).
     """
     q = math.sqrt((2 * d * k) / c1)
-    while True:
-        S = q + Sp
-        volumen_total = S * volumen_unitario
-        monto_total = S * b
-        if volumen_total <= volumen_maximo and monto_total <= monto_maximo:
-            break
-        if volumen_total > volumen_maximo:
-            q = (volumen_maximo / volumen_unitario) - Sp
-        if monto_total > monto_maximo:
-            q = (monto_maximo / b) - Sp
-    return q
-
-def calcular_variables(q, d, k, c1, b, Sp, duracion_temporada):
-    """
-    Calcula las variables del inventario (excepto q).
-
-    Args (todos son float):
-        q: Tamaño del lote (kg).
-        d: Demanda del insumo (kg).
-        k: Costo por orden ($).
-        c1: Costo de mantenimiento ($).
-        b: Costo de adquisición ($).
-        Sp: Stock de protección (kg).
-        duracion_temporada: Duración de la temporada (semanas).
-
-    Returns:
-        tupla: Variables calculadas (t, n_pedidos, D, S, CTE).
-    """
     t = q / d
     n_pedidos = math.ceil(duracion_temporada / t)
     D = d * duracion_temporada
     S = q + Sp
     CTE = (D * k / q) + (q * c1 / 2) + (D * b) + (Sp * c1)
-    return t, n_pedidos, D, S, CTE
+    return q, t, n_pedidos, D, S, CTE
 
 def modelo_insumo(insumo, parametros, demanda, duracion_temporada, k):
     """
@@ -68,26 +38,61 @@ def modelo_insumo(insumo, parametros, demanda, duracion_temporada, k):
         k (float): Costo por orden ($).
 
     Returns:
-        list: Resultados del procesamiento del insumo.
+        Resultados del procesamiento del insumo en dos listas.
     """
-    # Obtención de los valores de los parámetros
     b = parametros['b']
     c1 = parametros['c1']
     Sp = parametros['Sp']
     volumen_unitario = parametros['volumen_unitario']
-    volumen_maximo = parametros['volumen_maximo']
-    monto_maximo = parametros['monto_maximo']
-    
-    # Calcular variables
-    q = calcular_tamano_lote(demanda, k, c1, Sp, volumen_unitario, volumen_maximo, b, monto_maximo)
-    t, n_pedidos, D, S, CTE = calcular_variables(q, demanda, k, c1, b, Sp, duracion_temporada)
+    q, t, n_pedidos, D, S, CTE = calcular_variables(demanda, k, c1, b, Sp, duracion_temporada)
     volumen_total = S * volumen_unitario
     monto_total = S * b
-    return [insumo, round(q, 2), round(t, 2), n_pedidos, round(D, 2), round(S, 2), round(CTE, 2), round(volumen_total, 2), round(monto_total, 2)]
+    return [insumo, round(q, 2), round(t, 2), n_pedidos, round(D, 2), round(S, 2), round(CTE, 2), round(volumen_total, 2), round(monto_total, 2)], {
+        "b": b,
+        "D": D,
+        "c1": c1,
+        "k": k,
+        "Sp": Sp,
+        "v": volumen_unitario,
+        "volumen_total": volumen_total,
+        "monto_total": monto_total,
+    }
+
+def exceso_restriccion(nombre_temporada, datos_insumos, max_monto, max_volumen_sin, max_volumen_ref, carpeta):
+    """
+    Informa que hay restricciones que no se cumplen y genera un archivo .txt para copiar y pegar en LINGO.
+
+    Args:
+        nombre_temporada (str): Nombre de la temporada.
+        datos_insumos (list): Lista de diccionarios con los datos de cada insumo necesarios para el cálculo.
+        max_monto (float): Monto máximo permitido.
+        max_volumen_sin (float): Volumen máximo sin refrigerar permitido.
+        max_volumen_ref (float): Volumen máximo refrigerado permitido.
+        carpeta (str): Carpeta donde guardar el archivo de texto.
+    """
+    print(f"Exceso de restricciones en la temporada {nombre_temporada}. Generando el código para LINGO...")
+
+    # Construir el contenido del archivo
+    contenido = ""
+    for datos in datos_insumos:
+        insumo = datos["insumo"].lower()[0]
+        contenido += f"D{insumo} = {datos['D']:.2f}; c1{insumo} = {datos['c1']:.2f}; Sp{insumo} = {datos['Sp']}; "
+        contenido += f"v_{insumo} = {datos['v']:.5f}; b_{insumo} = {datos['b']:.2f};\n"
+
+    contenido += f"\nmax_monto = {max_monto};\n"
+    contenido += f"max_volumen_ref = {max_volumen_ref};\n"
+    contenido += f"max_volumen_sin = {max_volumen_sin};\n"
+
+    # Crear archivo de texto
+    archivo_txt = os.path.join(carpeta, f"parametros_LINGO_{nombre_temporada}.txt")
+    with open(archivo_txt, mode="w", encoding="utf-8") as archivo:
+        archivo.write(contenido)
+
+    print(f"Archivo generado: {archivo_txt}")
 
 def modelo_temporada(temporada, insumos, k, carpeta):
     """
-    Implementa el modelo para todos los insumos durante una temporada.
+    Implementa el modelo para todos los insumos durante una temporada, verificando el cumplimiento de restricciones.
 
     Args:
         temporada (dict): Información de la temporada.
@@ -98,14 +103,47 @@ def modelo_temporada(temporada, insumos, k, carpeta):
     nombre_temporada = temporada['nombre']
     duracion_temporada = temporada['duracion_temporada']
     demandas = temporada['demandas']
+    
+    volumen_sin_refrigerar = 0
+    volumen_refrigerado = 0
+    monto_total_inmovilizado = 0
+
+    datos_insumos = []
+
     archivo_csv = os.path.join(carpeta, f"temporada_{nombre_temporada}.csv")
     with open(archivo_csv, mode='w', newline='', encoding='utf-8') as archivo:
         escritor_csv = csv.writer(archivo)
         escritor_csv.writerow(["Insumo", "q (kg)", "t (sem)", "n", "D", "S_max", "CTE", "Volumen ocupado (m³)", "Monto total inmovilizado ($)"])
+        
         for insumo, parametros in insumos.items():
             demanda = demandas.get(insumo, 0)
-            resultados = modelo_insumo(insumo, parametros, demanda, duracion_temporada, k)
+            resultados, datos_insumo = modelo_insumo(insumo, parametros, demanda, duracion_temporada, k)
+            
+            volumen_total = resultados[-2]
+            monto_total = resultados[-1]
+
+            if insumo.lower() == "manteca":
+                volumen_refrigerado += volumen_total
+            else:
+                volumen_sin_refrigerar += volumen_total
+
+            monto_total_inmovilizado += monto_total
+            datos_insumo["insumo"] = insumo
+            datos_insumos.append(datos_insumo)
+
             escritor_csv.writerow(resultados)
+
+    if (volumen_sin_refrigerar > MAX_SIN_REFRIGERAR or 
+    volumen_refrigerado > MAX_REFRIGERADO or 
+    monto_total_inmovilizado > MAX_MONTO):
+        exceso_restriccion(
+            nombre_temporada,
+            datos_insumos,
+            MAX_MONTO,
+            MAX_SIN_REFRIGERAR,
+            MAX_REFRIGERADO,
+            carpeta
+        )
 
 def modelo_inventario(insumos, k, temporadas, carpeta="inventory_plan"):
     """
@@ -124,10 +162,10 @@ def modelo_inventario(insumos, k, temporadas, carpeta="inventory_plan"):
 
 # Parámetros para los insumos
 insumos = {
-    "Harina de Trigo": {"b": 1600, "c1": 685.12, "Sp": 120, "volumen_unitario": 0.0018, "volumen_maximo": 22, "monto_maximo": 2000000},
-    "Azúcar": {"b": 1600, "c1": 685.12, "Sp": 4, "volumen_unitario": 0.0014, "volumen_maximo": 1.5, "monto_maximo": 90000},
-    "Sal": {"b": 1600, "c1": 685.12, "Sp": 3, "volumen_unitario": 0.00075, "volumen_maximo": 1, "monto_maximo": 110000},
-    "Manteca": {"b": 13000, "c1": 5566.6, "Sp": 12, "volumen_unitario": 0.0015, "volumen_maximo": 2.5, "monto_maximo": 800000}
+    "Harina de Trigo": {"b": 1600, "c1": 685.12, "Sp": 120, "volumen_unitario": 0.0018},
+    "Azúcar": {"b": 1600, "c1": 685.12, "Sp": 4, "volumen_unitario": 0.0014},
+    "Sal": {"b": 1600, "c1": 685.12, "Sp": 3, "volumen_unitario": 0.00075},
+    "Manteca": {"b": 13000, "c1": 5566.6, "Sp": 12, "volumen_unitario": 0.0015}
 }
 
 # Parámetros por temporada
@@ -139,7 +177,10 @@ temporadas = [
 ]
 
 # Otros parámetros constantes
-k = 30000  # Costo por orden
+k = 30000
+MAX_SIN_REFRIGERAR = 24
+MAX_REFRIGERADO = 3
+MAX_MONTO = 3000000
 
 # Ejecutar modelo
 modelo_inventario(insumos, k, temporadas)
