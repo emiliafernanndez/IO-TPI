@@ -6,6 +6,7 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.stattools import adfuller
 import warnings
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from utils import crear_carpeta
 
 warnings.filterwarnings("ignore")
 
@@ -56,7 +57,7 @@ def save_forecast_plots(series, forecast, ingredient_name, output_folder='ingred
     - output_folder: carpeta donde van los gráficos.
     """
     # Crear la carpeta de salida si no existe
-    os.makedirs(output_folder, exist_ok=True)
+    crear_carpeta(output_folder)
     
     # Graficar la serie original y el pronóstico
     plt.figure(figsize=(10, 6))

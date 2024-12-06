@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import os
 
 def load_and_clean_data(input_file):
     """
@@ -28,3 +29,13 @@ def load_and_clean_data(input_file):
     data = data[(data['Quantity'] > 0) & (data['unit_price'] > 0)]
     
     return data
+
+def crear_carpeta(carpeta):
+    """
+    Crea una carpeta si no existe.
+
+    Args:
+        carpeta (str): Ruta de la carpeta a crear.
+    """
+    if not os.path.exists(carpeta):
+        os.makedirs(carpeta)
