@@ -1,5 +1,11 @@
+import os
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
+output_dir_base = 'sensitivity' 
+output_dir = os.path.join(output_dir_base, 'q')  
+os.makedirs(output_dir, exist_ok=True)
 
 # Información de temporadas
 temporadas = [
@@ -35,6 +41,31 @@ def generar_qs(valor_original):
     q_max = valor_original * 4
     return np.linspace(q_min, q_max, 20)
 
+# Función para graficar los resultados
+def graficar_cte(df_resultados_q):
+    # Obtener lista de insumos y temporadas únicas
+    insumos_unicos = df_resultados_q["Insumo"].unique()
+    temporadas_unicas = df_resultados_q["Temporada"].unique()
+
+    # Graficar CTE para cada insumo y temporada
+    for insumo in insumos_unicos:
+        for temporada in temporadas_unicas:
+            # Filtrar los datos para el insumo y la temporada específicos
+            df_filtrado = df_resultados_q[(df_resultados_q["Insumo"] == insumo) & (df_resultados_q["Temporada"] == temporada)]
+            
+            # Graficar
+            plt.figure(figsize=(10, 6))
+            plt.plot(df_filtrado["q"], df_filtrado["CTE"], marker='o', label=f'CTE - {insumo} (Temporada {temporada})')
+            plt.title(f'CTE vs q para {insumo} - Temporada {temporada}')
+            plt.xlabel('Tamaño de Lote (q)')
+            plt.ylabel('CTE')
+            plt.legend()
+            plt.grid(True)
+            
+            # Guardar gráfico en el directorio
+            plt.savefig(f'{output_dir}/{insumo}_{temporada}_sensitivity_q.png')
+            plt.close()
+
 # Resultados
 resultados_q = {"Temporada": [], "Insumo": [], "q": [], "Demanda_Total": [], "CTE": []}
 
@@ -66,9 +97,9 @@ for temporada_info in temporadas:
 # Convertir resultados a DataFrame para facilitar análisis
 df_resultados_q = pd.DataFrame(resultados_q)
 
-# Guardar todos los valores de q y CTE en un archivo CSV
-df_resultados_q.to_csv("muestras_cte_q.csv", index=False)
-print("Los valores de q y CTE se han guardado en 'muestras_cte_q.csv'.")
+# Guardar todos los valores de q y CTE en un archivo CSV en el directorio
+df_resultados_q.to_csv(f"{output_dir}/muestras_cte_q.csv", index=False)
+print(f"Los valores de q y CTE se han guardado en '{output_dir}/muestras_cte_q.csv'.")
 
 # Calcular media y desviación estándar del CTE agrupando por insumo, temporada y q
 agrupados_q = df_resultados_q.groupby(["Temporada", "Insumo"]).agg(
@@ -76,6 +107,10 @@ agrupados_q = df_resultados_q.groupby(["Temporada", "Insumo"]).agg(
     DE_CTE=("CTE", "std")
 ).reset_index()
 
-# Guardar los resultados agrupados en un archivo CSV
-agrupados_q.to_csv("cte_q_agrupados.csv", index=False)
-print("Los resultados agrupados por q se han guardado en 'cte_q_agrupados.csv'.")
+# Guardar los resultados agrupados en un archivo CSV en el directorio
+agrupados_q.to_csv(f"{output_dir}/cte_q_agrupados.csv", index=False)
+print(f"Los resultados agrupados por q se han guardado en '{output_dir}/cte_q_agrupados.csv'.")
+
+# Graficar los resultados de CTE vs q para cada insumo y temporada
+graficar_cte(df_resultados_q)
+

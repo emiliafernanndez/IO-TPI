@@ -3,6 +3,10 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
+output_dir_base = 'sensitivity' 
+output_dir = os.path.join(output_dir_base, 'd')  
+os.makedirs(output_dir, exist_ok=True)
+
 # Información de temporadas con desviaciones estándar reales
 temporadas = [
     {
@@ -107,7 +111,7 @@ for temporada_info in temporadas:
 df_resultados = pd.DataFrame(resultados)
 
 # Guardar todas las muestras en un archivo CSV
-df_resultados.to_csv("muestras_cte_d.csv", index=False)
+df_resultados.to_csv(f"{output_dir}/muestras_cte_d.csv", index=False)
 print("Las muestras se han guardado en 'muestras_cte_d.csv'.")
 
 # Calcular media y desviación estándar del CTE agrupando por insumo, temporada y q
@@ -117,12 +121,8 @@ agrupados = df_resultados.groupby(["Temporada", "Insumo"]).agg(
 ).reset_index()
 
 # Guardar los datos agrupados en un archivo CSV
-agrupados.to_csv("cte_d_agrupados.csv", index=False)
+agrupados.to_csv(f"{output_dir}/cte_d_agrupados.csv", index=False)
 print("Los resultados agrupados se han guardado en 'cte_d_agrupados.csv'.")
-
-# Crear histogramas
-output_folder = "sensitivity"
-os.makedirs(output_folder, exist_ok=True)
 
 for temporada in df_resultados["Temporada"].unique():
     for insumo in df_resultados["Insumo"].unique():
@@ -135,8 +135,8 @@ for temporada in df_resultados["Temporada"].unique():
         plt.ylabel("Frecuencia")
         plt.grid(axis='y', linestyle='--', alpha=0.7)
 
-        filename = f"{insumo}_temporada_{temporada}_sensitivity.png".replace(" ", "_")
-        filepath = os.path.join(output_folder, filename)
+        filename = f"{insumo}_{temporada}_sensitivity_d.png".replace(" ", "_")
+        filepath = os.path.join(output_dir, filename)
         plt.savefig(filepath, dpi=300, bbox_inches='tight')
         plt.close()
         print(f"Histograma guardado: {filepath}")
