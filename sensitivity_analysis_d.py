@@ -3,11 +3,12 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
-output_dir_base = 'sensitivity' 
-output_dir = os.path.join(output_dir_base, 'd')  
+# Configuración de carpeta y subcarpeta de salida
+output_dir_base = 'sensitivity'
+output_dir = os.path.join(output_dir_base, 'd')
 os.makedirs(output_dir, exist_ok=True)
 
-# Información de temporadas con desviaciones estándar reales
+# Información de temporadas con media y D.E. de demanda
 temporadas = [
     {
         "nombre": "1",
@@ -59,10 +60,7 @@ insumos = {
     "Manteca": {"b": 13000, "c1": 5566.6, "Sp": 12, "volumen_unitario": 0.0015, "volumen_maximo": 2.5, "monto_maximo": 800000},
 }
 
-# Configuración
-muestras_por_temporada = 50  # Número de muestras a generar por temporada para cada insumo
-
-# Tamaños de lote (q)
+# Tamaños de lote calculados previamente para cada temporada e insumo
 valores_q = {
     1: {"Harina de Trigo": 469.3284, "Azúcar": 63.07593, "Sal": 71.41723, "Manteca": 54.80865},
     2: {"Harina de Trigo": 748.4618, "Azúcar": 102.9572, "Sal": 113.8859, "Manteca": 69.89478},
@@ -70,73 +68,88 @@ valores_q = {
     4: {"Harina de Trigo": 523.9430, "Azúcar": 71.38043, "Sal": 79.48412, "Manteca": 51.13275},
 }
 
-# Función para calcular CTE
 def calcular_cte(d, k, q, c1, b, Sp):
+    """
+    Calcula el Costo Total Esperado (CTE).
+    Args (todos float):
+        d: Demanda total de la temporada (kg).
+        k: Costo de Orden ($).
+        q: Tamaño del Lote (kg).
+        c1: Costo unitario de Mantenimiento ($/kg).
+        b: Costo unitario de Adquisición ($).
+        Sp: Stock de Protección (kg).
+    Returns:
+        float: Costo total esperado.
+    """
     return (d * k / q) + (q * c1 / 2) + (d * b) + (Sp * c1)
 
-# Resultados
-resultados = {"Temporada": [], "Insumo": [], "q": [], "Muestra": [], "Demanda_Total": [], "CTE": []}
-
-# Generar muestras y calcular CTE
-for temporada_info in temporadas:
-    temporada = temporada_info["nombre"]
-    duracion_temporada = temporada_info["duracion_temporada"]
+def generar_resultados(temporadas, insumos, valores_q, muestras_por_temporada):
+    """
+    Genera las simulaciones de CTE para cada combinación de temporada e insumo.
+    """
+    resultados = {"Temporada": [], "Insumo": [], "q": [], "Muestra": [], "Demanda_Total": [], "CTE": []}
     
-    for insumo, datos in temporada_info["demandas"].items():
-        demanda_media = datos["media"]
-        desviacion = datos["de"]
-        muestras = np.random.normal(loc=demanda_media, scale=desviacion, size=muestras_por_temporada)
+    for temporada_info in temporadas:
+        temporada = temporada_info["nombre"]
+        duracion_temporada = temporada_info["duracion_temporada"]
         
-        for q_id, valores in valores_q.items():
-            q = valores[insumo]
-            for i, muestra in enumerate(muestras):
-                demanda_total = muestra * duracion_temporada  # Ajustar la demanda total por duración de la temporada
-                b = insumos[insumo]["b"]
-                c1 = insumos[insumo]["c1"]
-                Sp = insumos[insumo]["Sp"]
-                k = 30000  # Costo por orden ($)
+        for insumo, datos in temporada_info["demandas"].items():
+            demanda_media = datos["media"]
+            desviacion = datos["de"]
+            muestras = np.random.normal(loc=demanda_media, scale=desviacion, size=muestras_por_temporada)
+            
+            for q_id, valores in valores_q.items():
+                q = valores[insumo]
+                for i, muestra in enumerate(muestras):
+                    
+                    # Conseguir parámetros y calcular CTE
+                    demanda_total = muestra * duracion_temporada
+                    cte = calcular_cte(demanda_total, k=30000, q=q, c1=insumos[insumo]["c1"], b=insumos[insumo]["b"], Sp=insumos[insumo]["Sp"])
+                    
+                    # Guardar resultados
+                    resultados["Temporada"].append(temporada)
+                    resultados["Insumo"].append(insumo)
+                    resultados["q"].append(q_id)
+                    resultados["Muestra"].append(i + 1)
+                    resultados["Demanda_Total"].append(demanda_total)
+                    resultados["CTE"].append(cte)
+    return pd.DataFrame(resultados)
 
-                # Calcular CTE
-                cte = calcular_cte(demanda_total, k, q, c1, b, Sp)
-                
-                # Guardar resultados
-                resultados["Temporada"].append(temporada)
-                resultados["Insumo"].append(insumo)
-                resultados["q"].append(q_id)
-                resultados["Muestra"].append(i + 1)
-                resultados["Demanda_Total"].append(demanda_total)
-                resultados["CTE"].append(cte)
+def guardar_histogramas(df_resultados, output_dir):
+    """
+    Genera y guarda histogramas del CTE para cada combinación de temporada e insumo.
+    """
+    for temporada in df_resultados["Temporada"].unique():
+        for insumo in df_resultados["Insumo"].unique():
+            data = df_resultados[(df_resultados["Temporada"] == temporada) & (df_resultados["Insumo"] == insumo)]
+            
+            plt.figure(figsize=(10, 6))
+            plt.hist(data["CTE"], bins=15, color='skyblue', edgecolor='black', alpha=0.7)
+            plt.title(f"Histograma de Sensibilidad\nTemporada {temporada} - {insumo}")
+            plt.xlabel("CTE (Costo Total Esperado)")
+            plt.ylabel("Frecuencia")
+            plt.grid(axis='y', linestyle='--', alpha=0.7)
+            
+            filename = f"{insumo}_{temporada}_sensitivity_d.png".replace(" ", "_")
+            filepath = os.path.join(output_dir, filename)
+            plt.savefig(filepath, dpi=300, bbox_inches='tight')
+            plt.close()
 
-# Convertir resultados a DataFrame para facilitar análisis
-df_resultados = pd.DataFrame(resultados)
+# Configuración: muestras a generar por temporada para cada insumo
+muestras_por_temporada = 50  
 
-# Guardar todas las muestras en un archivo CSV
+# Generar y guardar resultados
+df_resultados = generar_resultados(temporadas, insumos, valores_q,muestras_por_temporada)
 df_resultados.to_csv(f"{output_dir}/muestras_cte_d.csv", index=False)
 print("Las muestras se han guardado en 'muestras_cte_d.csv'.")
-
-# Calcular media y desviación estándar del CTE agrupando por insumo, temporada y q
+   
+# Calcular y guardar estadísticas agrupadas 
 agrupados = df_resultados.groupby(["Temporada", "Insumo"]).agg(
     Media_CTE=("CTE", "mean"),
     DE_CTE=("CTE", "std")
 ).reset_index()
-
-# Guardar los datos agrupados en un archivo CSV
 agrupados.to_csv(f"{output_dir}/cte_d_agrupados.csv", index=False)
 print("Los resultados agrupados se han guardado en 'cte_d_agrupados.csv'.")
-
-for temporada in df_resultados["Temporada"].unique():
-    for insumo in df_resultados["Insumo"].unique():
-        data = df_resultados[(df_resultados["Temporada"] == temporada) & (df_resultados["Insumo"] == insumo)]
-        
-        plt.figure(figsize=(10, 6))
-        plt.hist(data["CTE"], bins=15, color='skyblue', edgecolor='black', alpha=0.7)
-        plt.title(f"Histograma de Sensibilidad\nTemporada {temporada} - {insumo}")
-        plt.xlabel("CTE (Costo Total Esperado)")
-        plt.ylabel("Frecuencia")
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
-
-        filename = f"{insumo}_{temporada}_sensitivity_d.png".replace(" ", "_")
-        filepath = os.path.join(output_dir, filename)
-        plt.savefig(filepath, dpi=300, bbox_inches='tight')
-        plt.close()
-        print(f"Histograma guardado: {filepath}")
+    
+# Generar histogramas en .PNG
+guardar_histogramas(df_resultados, output_dir)
