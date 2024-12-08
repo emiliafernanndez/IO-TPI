@@ -71,6 +71,7 @@ valores_q = {
 def calcular_cte(d, k, q, c1, b, Sp):
     """
     Calcula el Costo Total Esperado (CTE).
+    
     Args (todos float):
         d: Demanda total de la temporada (kg).
         k: Costo de Orden ($).
@@ -78,6 +79,7 @@ def calcular_cte(d, k, q, c1, b, Sp):
         c1: Costo unitario de Mantenimiento ($/kg).
         b: Costo unitario de Adquisición ($).
         Sp: Stock de Protección (kg).
+        
     Returns:
         float: Costo total esperado.
     """

@@ -3,8 +3,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-output_dir_base = 'sensitivity' 
-output_dir = os.path.join(output_dir_base, 'q')  
+# Configuración de carpeta y subcarpeta de salida
+output_dir_base = 'sensitivity'
+output_dir = os.path.join(output_dir_base, 'q')
 os.makedirs(output_dir, exist_ok=True)
 
 # Información de temporadas
@@ -20,7 +21,7 @@ insumos = {
     "Harina de Trigo": {"b": 1600, "c1": 685.12, "Sp": 120},
     "Azúcar": {"b": 1600, "c1": 685.12, "Sp": 4},
     "Sal": {"b": 1600, "c1": 685.12, "Sp": 3},
-    "Manteca": {"b": 13000, "c1": 5566.6, "Sp": 12}
+    "Manteca": {"b": 13000, "c1": 5566.6, "Sp": 12},
 }
 
 # Tamaños de lote originales
@@ -31,86 +32,117 @@ valores_q = {
     4: {"Harina de Trigo": 523.9430, "Azúcar": 71.38043, "Sal": 79.48412, "Manteca": 51.13275},
 }
 
-# Función para calcular CTE
 def calcular_cte(d, k, q, c1, b, Sp):
+    """
+    Calcula el Costo Total Esperado (CTE).
+    
+    Args (todos float):
+        d: Demanda total de la temporada (kg).
+        k: Costo de Orden ($).
+        q: Tamaño del Lote (kg).
+        c1: Costo unitario de Mantenimiento ($/kg).
+        b: Costo unitario de Adquisición ($).
+        Sp: Stock de Protección (kg).
+        
+    Returns:
+        float: Costo total esperado.
+    """
     return (d * k / q) + (q * c1 / 2) + (d * b) + (Sp * c1)
 
-# Generar 20 valores de q
 def generar_qs(valor_original):
+    """
+    Genera 20 valores de q en el rango [q/4, q*4].
+
+    Args:
+        valor_original (float): Tamaño de lote original.
+
+    Returns:
+        np.ndarray: Array con 20 valores de q.
+    """
     q_min = valor_original / 4
     q_max = valor_original * 4
     return np.linspace(q_min, q_max, 20)
 
-# Función para graficar los resultados
 def graficar_cte(df_resultados_q):
-    # Obtener lista de insumos y temporadas únicas
-    insumos_unicos = df_resultados_q["Insumo"].unique()
-    temporadas_unicas = df_resultados_q["Temporada"].unique()
+    """
+    Genera gráficos comparando CTE y q para cada combinación de insumo y temporada.
 
-    # Graficar CTE para cada insumo y temporada
-    for insumo in insumos_unicos:
-        for temporada in temporadas_unicas:
-            # Filtrar los datos para el insumo y la temporada específicos
-            df_filtrado = df_resultados_q[(df_resultados_q["Insumo"] == insumo) & (df_resultados_q["Temporada"] == temporada)]
+    Args:
+        df_resultados_q (pd.DataFrame): DataFrame con resultados de CTE.
+    """
+    for insumo in df_resultados_q["Insumo"].unique():
+        for temporada in df_resultados_q["Temporada"].unique():
             
+            # Filtrar datos para el insumo y temporada actuales
+            df_filtrado = df_resultados_q[
+                (df_resultados_q["Insumo"] == insumo) & 
+                (df_resultados_q["Temporada"] == temporada)
+            ]
+
             # Graficar
             plt.figure(figsize=(10, 6))
-            plt.plot(df_filtrado["q"], df_filtrado["CTE"], marker='o', label=f'CTE - {insumo} (Temporada {temporada})')
+            plt.plot(df_filtrado["q"], df_filtrado["CTE"], marker='o', label=f'{insumo} - T{temporada}')
             plt.title(f'CTE vs q para {insumo} - Temporada {temporada}')
-            plt.xlabel('Tamaño de Lote (q)')
+            plt.xlabel('Tamaño de lote (q)')
             plt.ylabel('CTE')
             plt.legend()
             plt.grid(True)
-            
-            # Guardar gráfico en el directorio
-            plt.savefig(f'{output_dir}/{insumo}_{temporada}_sensitivity_q.png')
+
+            # Guardar gráfico
+            filename = f'{insumo}_{temporada}_sensitivity_q.png'.replace(" ", "_")
+            plt.savefig(os.path.join(output_dir, filename), dpi=300, bbox_inches='tight')
             plt.close()
 
-# Resultados
-resultados_q = {"Temporada": [], "Insumo": [], "q": [], "Demanda_Total": [], "CTE": []}
+def main():
+    """
+    Función principal para realizar el análisis de sensibilidad en q.
+    """
+    resultados_q = {"Temporada": [], "Insumo": [], "q": [], "Demanda_Total": [], "CTE": []}
 
-# Generar valores de q y calcular CTE
-for temporada_info in temporadas:
-    temporada = temporada_info["nombre"]
-    duracion_temporada = temporada_info["duracion_temporada"]
-    
-    for insumo, demanda_media in temporada_info["demandas"].items():
-        demanda_total = demanda_media * duracion_temporada  # Demanda total ajustada por duración de la temporada
-        q_values = generar_qs(valores_q[1][insumo])  # Generar los 20 valores de q
+    # Generar valores de q y calcular CTE
+    for temporada_info in temporadas:
+        temporada = temporada_info["nombre"]
+        duracion_temporada = temporada_info["duracion_temporada"]
 
-        for q in q_values:
-            b = insumos[insumo]["b"]
-            c1 = insumos[insumo]["c1"]
-            Sp = insumos[insumo]["Sp"]
-            k = 30000  # Costo por orden ($)
+        for insumo, demanda_media in temporada_info["demandas"].items():
+            demanda_total = demanda_media * duracion_temporada
+            q_values = generar_qs(valores_q[1][insumo])
 
-            # Calcular CTE
-            cte = calcular_cte(demanda_total, k, q, c1, b, Sp)
-            
-            # Guardar resultados
-            resultados_q["Temporada"].append(temporada)
-            resultados_q["Insumo"].append(insumo)
-            resultados_q["q"].append(q)
-            resultados_q["Demanda_Total"].append(demanda_total)
-            resultados_q["CTE"].append(cte)
+            for q in q_values:
+                # Calcular CTE
+                cte = calcular_cte(
+                    d=demanda_total,
+                    k=30000,
+                    q=q,
+                    c1=insumos[insumo]["c1"],
+                    b=insumos[insumo]["b"],
+                    Sp=insumos[insumo]["Sp"]
+                )
 
-# Convertir resultados a DataFrame para facilitar análisis
-df_resultados_q = pd.DataFrame(resultados_q)
+                # Guardar resultados
+                resultados_q["Temporada"].append(temporada)
+                resultados_q["Insumo"].append(insumo)
+                resultados_q["q"].append(q)
+                resultados_q["Demanda_Total"].append(demanda_total)
+                resultados_q["CTE"].append(cte)
 
-# Guardar todos los valores de q y CTE en un archivo CSV en el directorio
-df_resultados_q.to_csv(f"{output_dir}/muestras_cte_q.csv", index=False)
-print(f"Los valores de q y CTE se han guardado en '{output_dir}/muestras_cte_q.csv'.")
+    # Convertir resultados a DataFrame
+    df_resultados_q = pd.DataFrame(resultados_q)
 
-# Calcular media y desviación estándar del CTE agrupando por insumo, temporada y q
-agrupados_q = df_resultados_q.groupby(["Temporada", "Insumo"]).agg(
-    Media_CTE=("CTE", "mean"),
-    DE_CTE=("CTE", "std")
-).reset_index()
+    # Guardar resultados en CSV
+    df_resultados_q.to_csv(f"{output_dir}/muestras_cte_q.csv", index=False)
+    print(f"Resultados guardados en '{output_dir}/muestras_cte_q.csv'.")
 
-# Guardar los resultados agrupados en un archivo CSV en el directorio
-agrupados_q.to_csv(f"{output_dir}/cte_q_agrupados.csv", index=False)
-print(f"Los resultados agrupados por q se han guardado en '{output_dir}/cte_q_agrupados.csv'.")
+    # Guardar estadísticas agrupadas
+    agrupados_q = df_resultados_q.groupby(["Temporada", "Insumo"]).agg(
+        Media_CTE=("CTE", "mean"),
+        DE_CTE=("CTE", "std")
+    ).reset_index()
+    agrupados_q.to_csv(f"{output_dir}/cte_q_agrupados.csv", index=False)
+    print(f"Estadísticas agrupadas guardadas en '{output_dir}/cte_q_agrupados.csv'.")
 
-# Graficar los resultados de CTE vs q para cada insumo y temporada
-graficar_cte(df_resultados_q)
+    # Generar gráficos
+    graficar_cte(df_resultados_q)
 
+if __name__ == "__main__":
+    main()
