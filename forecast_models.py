@@ -16,12 +16,12 @@ def load_data(filepath):
     return data
 
 def check_stationarity(series):
-    # Realiza la prueba de Dickey-Fuller para verificar la estacionaridad
+    # Realizar la prueba de Dickey-Fuller para verificar la estacionaridad
     result = adfuller(series.dropna())
     return result[1] <= 0.05  # Retorna True si es estacionaria
 
 def difference_series(series):
-    # Diferencia la serie si no es estacionaria
+    # Diferenciar la serie si no es estacionaria
     return series.diff().dropna()
 
 def fit_sarima_model(series, order=(1,1,1), seasonal_order=(1,1,1,52)):
